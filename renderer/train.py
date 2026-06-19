@@ -13,6 +13,11 @@ from renderer.discriminator import PatchDiscriminator
 from vgg19_mask import VGGLoss_mask
 from dataset import TFDataset
 
+try:
+    from tar_dataset import TarShardDataset
+except ImportError:
+    from renderer.tar_dataset import TarShardDataset
+
 torch.backends.cudnn.enabled = True
 torch.backends.cudnn.benchmark = True
 
@@ -239,8 +244,24 @@ class DataModule(pl.LightningDataModule):
         self.args = args
         
     def setup(self, stage=None):
-        self.train_dataset = TFDataset(root_dir=self.args.dataset_path, split='train')
-        self.val_dataset = TFDataset(root_dir=self.args.dataset_path, split='val')
+        if getattr(self.args, "dataset_type", "folder") == "tar":
+            self.train_dataset = TarShardDataset(
+                shard_root=self.args.dataset_path,
+                split="train",
+                val_ratio=self.args.val_ratio,
+                min_frames=self.args.min_frames,
+                landmark_pixel_scale=self.args.landmark_pixel_scale,
+            )
+            self.val_dataset = TarShardDataset(
+                shard_root=self.args.dataset_path,
+                split="val",
+                val_ratio=self.args.val_ratio,
+                min_frames=self.args.min_frames,
+                landmark_pixel_scale=self.args.landmark_pixel_scale,
+            )
+        else:
+            self.train_dataset = TFDataset(root_dir=self.args.dataset_path, split='train')
+            self.val_dataset = TFDataset(root_dir=self.args.dataset_path, split='val')
         
     def train_dataloader(self):
         return data.DataLoader(
@@ -264,6 +285,31 @@ if __name__ == "__main__":
     
     # Dataset
     parser.add_argument("--dataset_path", type=str, required=True, help="Path to the dataset root")
+    parser.add_argument(
+        "--dataset_type",
+        type=str,
+        default="folder",
+        choices=["folder", "tar"],
+        help="Dataset backend: folder uses original video_frame/lmd layout; tar uses tar-sharded layout.",
+    )
+    parser.add_argument(
+        "--val_ratio",
+        type=float,
+        default=0.02,
+        help="Validation ratio used only for tar dataset.",
+    )
+    parser.add_argument(
+        "--min_frames",
+        type=int,
+        default=26,
+        help="Minimum number of frames required per clip.",
+    )
+    parser.add_argument(
+        "--landmark_pixel_scale",
+        type=int,
+        default=512,
+        help="Pixel scale used to normalize landmark coordinates.",
+    )
     
     # Basic Training Params
     parser.add_argument("--iter", type=int, default=7000000)
@@ -327,6 +373,5 @@ if __name__ == "__main__":
     )
     
     trainer.fit(system, dm)
-
 
 
