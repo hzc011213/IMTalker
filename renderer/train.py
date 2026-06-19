@@ -1,3 +1,13 @@
+import sys
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+RENDERER_DIR = Path(__file__).resolve().parent
+
+for p in [str(REPO_ROOT), str(RENDERER_DIR)]:
+    if p not in sys.path:
+        sys.path.insert(0, p)
+
 import argparse
 import os
 import torch
