@@ -148,9 +148,13 @@ class IMFSystem(pl.LightningModule):
         return total_g_loss
     
     def validation_step(self, batch, batch_idx):
-        pred = self.gen(batch["image_1"], batch["image_0"])
-        recon = self.gen(batch["image_0"], batch["image_0"])            
+        pred_out = self.gen(batch["image_1"], batch["image_0"])
+        recon_out = self.gen(batch["image_0"], batch["image_0"])
 
+        # Handle both single tensor and (video, motion_logits) tuple returns
+        pred = pred_out[0] if isinstance(pred_out, tuple) else pred_out
+        recon = recon_out[0] if isinstance(recon_out, tuple) else recon_out 
+        
         pred_l1 = F.l1_loss(pred, batch["image_1"])
         pred_vgg_all, pred_vgg_face = self.criterion_vgg(
             pred, batch["image_1"], batch["mask_eye_1"] + batch["mask_mouth_1"]
