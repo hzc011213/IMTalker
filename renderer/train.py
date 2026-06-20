@@ -265,6 +265,8 @@ class DataModule(pl.LightningDataModule):
                 val_ratio=self.args.val_ratio,
                 min_frames=self.args.min_frames,
                 landmark_pixel_scale=self.args.landmark_pixel_scale,
+                use_index_cache=not self.args.no_index_cache,
+                rebuild_index_cache=self.args.rebuild_index_cache,
             )
             self.val_dataset = TarShardDataset(
                 shard_root=self.args.dataset_path,
@@ -272,6 +274,8 @@ class DataModule(pl.LightningDataModule):
                 val_ratio=self.args.val_ratio,
                 min_frames=self.args.min_frames,
                 landmark_pixel_scale=self.args.landmark_pixel_scale,
+                use_index_cache=not self.args.no_index_cache,
+                rebuild_index_cache=self.args.rebuild_index_cache,
             )
         else:
             self.train_dataset = TFDataset(root_dir=self.args.dataset_path, split='train')
@@ -323,6 +327,16 @@ if __name__ == "__main__":
         type=int,
         default=512,
         help="Pixel scale used to normalize landmark coordinates.",
+    )
+    parser.add_argument(
+        "--no_index_cache",
+        action="store_true",
+        help="Disable tar index cache.",
+    )
+    parser.add_argument(
+        "--rebuild_index_cache",
+        action="store_true",
+        help="Force rebuild tar index cache.",
     )
     
     # Basic Training Params
@@ -387,5 +401,4 @@ if __name__ == "__main__":
     )
     
     trainer.fit(system, dm)
-
 

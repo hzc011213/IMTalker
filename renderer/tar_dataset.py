@@ -1,4 +1,5 @@
 import io
+import pickle
 import tarfile
 from pathlib import Path
 
@@ -20,6 +21,8 @@ class TarShardDataset(Dataset):
         val_ratio=0.02,
         min_frames=26,
         landmark_pixel_scale=512,
+        use_index_cache=True,
+        rebuild_index_cache=False,
     ):
         super().__init__()
         assert split in ["train", "val", "test"]
@@ -29,6 +32,8 @@ class TarShardDataset(Dataset):
         self.val_ratio = val_ratio
         self.min_frames = min_frames
         self.pixel_scale = (landmark_pixel_scale, landmark_pixel_scale)
+        self.use_index_cache = use_index_cache
+        self.rebuild_index_cache = rebuild_index_cache
 
         self.transform = transforms.Compose([
             transforms.Resize((512, 512)),
@@ -36,7 +41,7 @@ class TarShardDataset(Dataset):
         ])
 
         self._tar_cache = {}
-        self.meta_list = self._build_index()
+        self.meta_list = self._load_or_build_index()
 
     def _norm_member(self, name: str) -> str:
         return name[2:] if name.startswith("./") else name
@@ -96,6 +101,40 @@ class TarShardDataset(Dataset):
             raise RuntimeError(f"No landmarks found in {lmd_item}")
 
         return frame_names, np.asarray(landmarks, dtype=np.float32)
+
+    def _cache_path(self):
+        val_tag = f"{self.val_ratio:.4f}".replace(".", "p")
+        cache_name = (
+            f"index_cache_"
+            f"{self.split}_"
+            f"val{val_tag}_"
+            f"min{self.min_frames}_"
+            f"scale{self.pixel_scale[0]}.pkl"
+        )
+        return self.shard_root / cache_name
+
+    def _load_or_build_index(self):
+        cache_path = self._cache_path()
+
+        if self.use_index_cache and cache_path.exists() and not self.rebuild_index_cache:
+            print(f"[TarShardDataset] Loading index cache: {cache_path}")
+            with open(cache_path, "rb") as f:
+                meta_list = pickle.load(f)
+
+            if not meta_list:
+                raise RuntimeError(f"Index cache is empty: {cache_path}")
+
+            print(f"[TarShardDataset] split={self.split}, clips={len(meta_list)}")
+            return meta_list
+
+        meta_list = self._build_index()
+
+        if self.use_index_cache:
+            print(f"[TarShardDataset] Saving index cache: {cache_path}")
+            with open(cache_path, "wb") as f:
+                pickle.dump(meta_list, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+        return meta_list
 
     def _build_index(self):
         if not self.shard_root.exists():
