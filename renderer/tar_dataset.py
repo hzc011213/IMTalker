@@ -10,8 +10,10 @@ from torch.utils.data import Dataset
 from torchvision import transforms
 from tqdm import tqdm
 
-from dataset import create_eye_mouth_mask
-
+try:
+    from dataset import create_eye_mouth_mask
+except ImportError:
+    from renderer.dataset import create_eye_mouth_mask
 
 class TarShardDataset(Dataset):
     def __init__(
