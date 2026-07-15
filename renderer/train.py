@@ -372,8 +372,8 @@ if __name__ == "__main__":
     dm = DataModule(args)
     
     # Load Checkpoint
-    if args.resume_ckpt and os.path.exists(args.resume_ckpt):
-        system.load_ckpt(args.resume_ckpt)
+    # if args.resume_ckpt and os.path.exists(args.resume_ckpt):
+    #     system.load_ckpt(args.resume_ckpt)
 
     # Logger
     logger = TensorBoardLogger(save_dir=args.exp_path, name=args.exp_name)
@@ -400,5 +400,5 @@ if __name__ == "__main__":
         enable_progress_bar=True,
     )
     
-    trainer.fit(system, dm)
+    trainer.fit(system, dm, ckpt_path=args.resume_ckpt if args.resume_ckpt else None)
 
